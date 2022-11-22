@@ -104,8 +104,21 @@ def home():
 
 @app.route('/confirm', methods=['POST'])
 def addtransaction():
+    
+    userSAlreadyExist = "false"
+    userRAlreadyExist = "false"
 
-    # TODO Benjamin - add user to list if needed
+    for u in users:
+        if (u.name == request.form.get("sname")):
+            userSAlreadyExist = "true"
+        if (u.name == request.form.get("rname")):
+            userRAlreadyExist = "true"
+
+    if userSAlreadyExist == "false":
+        users.append(user(request.form.get("sname")))
+
+    if userSAlreadyExist == "false":
+        users.append(user(request.form.get("rname")))
 
     # add transaction to history
     transactions.append([request.form.get("sname"),
