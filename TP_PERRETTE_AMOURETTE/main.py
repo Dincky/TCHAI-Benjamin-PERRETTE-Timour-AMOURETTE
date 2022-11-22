@@ -19,8 +19,8 @@ transactions = [["ana", "bob", datetime.datetime.now().strftime("%m/%d/%Y %H:%M:
                 ["paul", "franck", datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"), str(random.randint(0, 100))],
                 ["paul", "franck", "11/08/2022 12:48:18", str(random.randint(0, 100))],
                 ]
-p1 = user("ana")
-users = [user('bob'), p1]
+
+users = [user('bob'), user("ana"), user('paul'), user("franck")]
 
 
 def sort_transaction(trs):
@@ -30,18 +30,21 @@ def sort_transaction(trs):
 @app.route('/user', methods=["POST"])
 def user_transactions():
     ut = []
+    strbal = "This user does not exist ! <br><br>"
     user = request.form.get("uname")
     for t in transactions:
         if t[0] == user or t[1] == user:
             ut.append(t)
 
-    s = '<body style = "background-image: url(' + "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'"\
-        + ');">'
+    s = '<body style = "background-image: url(' \
+        "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'"\
+        ');">'
+
     for u in users:
+        print(u.name, u.bal)
         if user == u.name:
             strbal = "Your current balance is " + str(u.bal) + "<br><br>"
             break
-
     s += strbal + '<table border="1" bgcolor="#FFFFFF">' \
         '<thead><tr><th colspan="4" bgcolor="A0A8A6">Transactions</th>' \
         '</tr></thead>' \
@@ -65,7 +68,8 @@ def user_transactions():
 @app.route('/')
 def home():
     form = ''\
-        '<body style = "background-image: url(' + "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'"\
+        '<body style = "background-image: url(' \
+        + "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'"\
         + ');">' \
         '<form action="/confirm" method="POST"> ' \
         '<label for="sname">Sender:</label><br>  <input type="text" id="sname" name="sname"><br>  ' \
@@ -101,14 +105,20 @@ def home():
 @app.route('/confirm', methods=['POST'])
 def addtransaction():
 
-    for u in users:
-        if
+    # TODO Benjamin - add user to list if needed
 
+    # add transaction to history
     transactions.append([request.form.get("sname"),
                          request.form.get("rname"),
                          datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
                          request.form.get("amnt")])
 
+    # change balance of concerned users
+    for u in users:
+        if u.name == request.form.get("sname"):
+            u.change_balance(-int(request.form.get("amnt")))
+        if u.name == request.form.get("rname"):
+            u.change_balance(int(request.form.get("amnt")))
     return '<body style="text-align:center; background-image: url(' +\
            "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" + \
            ');">' \
