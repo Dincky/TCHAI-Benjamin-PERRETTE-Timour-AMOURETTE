@@ -1,26 +1,40 @@
+import csv
 import datetime
-import random
+import pandas as pd
 from flask import *
 
 
 class user:
-    def __init__(self, name):
+    def __init__(self, name, bal):
         self.name = name
-        self.bal = 0
+        self.bal = bal
 
     def change_balance(self, amount):
         self.bal += amount
 
 
 app = Flask(__name__)
-transactions = [["ana", "bob", datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"), str(random.randint(0, 100))],
-                ["paul", "franck", datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"), str(random.randint(0, 100))],
-                ["paul", "franck", datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"), str(random.randint(0, 100))],
-                ["paul", "franck", datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"), str(random.randint(0, 100))],
-                ["paul", "franck", "11/08/2022 12:48:18", str(random.randint(0, 100))],
-                ]
 
-users = [user('bob'), user("ana"), user('paul'), user("franck")]
+
+def read_data():
+    transactions = pd.read_csv("data/transactions.csv",delimiter=",")
+    print(transactions.to_html())
+    userstab = pd.read_csv("data/users.csv")
+    return transactions, userstab
+
+transactions,users = read_data()
+
+
+def write_tr(tr):
+    with open("data/transactions.csv", newline=';\r') as trfile:
+        trwriter = csv.writer(trfile, delimiter=',')
+        trwriter.writerow(tr)
+
+
+def write_user(user):
+    with open("data/users.csv", newline=';\r') as ufile:
+        uwriter = csv.writer(ufile, delimiter=',')
+        uwriter.writerow(user)
 
 
 def sort_transaction(trs):
@@ -56,6 +70,8 @@ def user_transactions():
         '</tr>'
 
     for tra in sort_transaction(ut):
+        print("tra:")
+        print(tra)
         s += '<tr>'
         for item in tra:
             s += '<td>' + item + '</td>'
@@ -80,58 +96,39 @@ def home():
         '<form action="/user" method="POST">'\
         '<label for="uname">Select user</label><input type="text" id="uname" name ="uname"> ' \
         '<input type="submit" value="Transaction history">' \
-        ' \n'
-    s = '' \
-        '<table border="1" bgcolor="#FFFFFF">' \
-        '<thead><tr><th colspan="4" bgcolor="A0A8A6">Transactions</th>' \
-        '</tr></thead>' \
-        '<tbody><tr>' \
-        '<td>Sender</td>' \
-        '<td>Recipient</td>' \
-        '<td>Date</td>' \
-        '<td>Amount</td>' \
-        '</tr>'
-
-    for tra in sort_transaction(transactions):
-        s += '<tr>'
-        for item in tra:
-            s += '<td>' + item + '</td>'
-        s += '</tr>'
-    s += '</table></tbody>'
-
-    return form + s + '</table>\n</body>', 200
+        ' <div bgcolor="FFFFFF">\n'\
+            'test'
+    s = transactions.to_html()
+    return form + s + '</div>\n</table>\n</body>', 200
 
 
 @app.route('/confirm', methods=['POST'])
 def addtransaction():
-    
-    userSAlreadyExist = "false"
-    userRAlreadyExist = "false"
+    newSender = True
+    newRecipient = True
+    sname = request.form.get("sname")
+    rname = request.form.get("rname")
+    amount = int(request.form.get("amnt"))
 
     for u in users:
-        if (u.name == request.form.get("sname")):
-            userSAlreadyExist = "true"
-        if (u.name == request.form.get("rname")):
-            userRAlreadyExist = "true"
+        if u.name == sname:
+            newSender = False
+            u.change_balance(-amount)
+        if u.name == rname:
+            newRecipient = False
+            u.change_balance(amount)
 
-    if userSAlreadyExist == "false":
-        users.append(user(request.form.get("sname")))
-
-    if userSAlreadyExist == "false":
-        users.append(user(request.form.get("rname")))
+    if newSender:
+        users.append(user(sname, -amount))
+    if newRecipient:
+        users.append(user(rname, amount))
 
     # add transaction to history
-    transactions.append([request.form.get("sname"),
-                         request.form.get("rname"),
+    transactions.append([sname,
+                         rname,
                          datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
-                         request.form.get("amnt")])
+                         amount])
 
-    # change balance of concerned users
-    for u in users:
-        if u.name == request.form.get("sname"):
-            u.change_balance(-int(request.form.get("amnt")))
-        if u.name == request.form.get("rname"):
-            u.change_balance(int(request.form.get("amnt")))
     return '<body style="text-align:center; background-image: url(' +\
            "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" + \
            ');">' \
