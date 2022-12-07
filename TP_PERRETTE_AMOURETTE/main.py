@@ -8,13 +8,14 @@ from flask import *
 app = Flask(__name__)
 transactions = pd.DataFrame
 userstab = pd.DataFrame
+IV = 0b01111000011000010111001101101000
 
 
 def read_data():
     global transactions
     global userstab
     transactions = pd.read_csv("data/transactions.csv", sep=',',
-                               dtype={'sender': str, 'recipient': str, 'datetime': str, 'amount': int})
+                               dtype={'sender': str, 'recipient': str, 'datetime': str, 'amount': int, 'h' : str})
     userstab = pd.read_csv("data/users.csv")
 
 
@@ -25,8 +26,6 @@ def write_tr(tr):
         trwriter = csv.writer(trfile, delimiter=',')
         trwriter.writerow(tr)
 
-def write_users():
-        userstab.to_csv(path_or_buf="data/users.csv",index=False)
 def write_users():
         userstab.to_csv(path_or_buf="data/users.csv",index=False, mode='w')
 
@@ -80,6 +79,49 @@ def user_transactions():
 
     return s + '</table>\n</body>', 201
 
+def comp(a,b):
+    return a ^ b
+
+def XDDD(c):
+    a = IV
+    i = 0
+    binlen = bin(len(c))
+    binlen = binlen.replace("0b","")
+    rest = len(c) % 4
+    padding = "\x80" + "\0"* (3 - rest) if rest else ""
+    restbin = len(binlen) % 4
+    paddingbin = "\0" * (4 - restbin) if restbin else ""
+    c += padding + binlen + paddingbin
+    while i < len(c):
+        A = ord(c[i]) << 24
+        B = ord(c[i+1]) << 16
+        C = ord(c[i+2]) << 8
+        D = ord(c[i+3])
+        a = comp(a, A+B+C+D)
+        i = i + 4
+    return hex(a)[2:]
+
+@app.route('/verif')
+def verif():
+    a = ""
+    for u in userstab.values:
+        c = str(u[0])+str(float(u[1]))
+        h = XDDD(c)
+        if h == u[2]:
+            a += "* " + str(u[0])+": est correcte" + "<br>"
+        else:
+            a += "* " + str(u[0])+": n'est pas correcte !!!!" + "<br>"
+
+    for t in transactions.values:
+        c = str(t[0])+str(t[1])+str(t[2])+str(t[3])
+        h = XDDD(c)
+        if h == t[4]:
+            a += "* La transaction " + str(t) +": est correcte" + "<br>"
+        else:
+            a += "* La transaction " + str(t) +": n'est pas correcte !!!!" + "<br>"
+
+    return "Page de verification : <br>" + a
+
 
 @app.route('/')
 def home():
@@ -121,12 +163,19 @@ def addtransaction():
             newRecipient = False
             u[1] += amount
     if newSender:
-        userstab = pd.concat([userstab,pd.DataFrame({'name':[sname], 'balance':[-amount]})] , ignore_index=True)
+        c = sname+str(float(-amount))
+        h = XDDD(c)
+        userstab = pd.concat([userstab,pd.DataFrame({'name':[sname], 'balance':[-amount], 'h':[h]})] , ignore_index=True)
     if newRecipient:
-        userstab = pd.concat([userstab,pd.DataFrame({'name':[rname], 'balance':[amount]})] , ignore_index=True)
+        c = rname+str(float(amount))
+        h = XDDD(c)
+        userstab = pd.concat([userstab,pd.DataFrame({'name':[rname], 'balance':[amount], 'h':[h]})] , ignore_index=True)
     write_users()
     # add transaction to history
-    write_tr([sname, rname, datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"), amount])
+    date = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    c = sname+rname+str(date)+str(amount)
+    h = XDDD(c)
+    write_tr([sname, rname, date, amount, h])
     return '<body style="text-align:center; background-image: url(' + \
            "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" + \
            ');">' \
