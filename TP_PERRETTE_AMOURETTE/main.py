@@ -1,33 +1,42 @@
 import csv
 import datetime
+
+import pandas
 import pandas as pd
 from flask import *
 
 app = Flask(__name__)
+transactions = pd.DataFrame
+userstab = pd.DataFrame
 
 
 def read_data():
+    global transactions
+    global userstab
     transactions = pd.read_csv("data/transactions.csv", sep=',',
                                dtype={'sender': str, 'recipient': str, 'datetime': str, 'amount': int})
-    print(transactions.to_html())
     userstab = pd.read_csv("data/users.csv")
-    return transactions, userstab
 
 
-transactions, userstab = read_data()
 
 
 def write_tr(tr):
-    with open("data/transactions.csv", newline='\r', mode='a') as trfile:
+    with open("data/transactions.csv", newline='', mode='a') as trfile:
         trwriter = csv.writer(trfile, delimiter=',')
         trwriter.writerow(tr)
 
+def write_users():
+        userstab.to_csv(path_or_buf="data/users.csv",index=False)
 
 def write_user(user):
-    with open("data/users.csv", newline='\r', mode='a') as ufile:
+    with open("data/users.csv", newline='', mode='a') as ufile:
         uwriter = csv.writer(ufile, delimiter=',')
         uwriter.writerow(user)
 
+def write_transactions():
+    with open("data/transactions.csv", newline='', mode='w') as trfile:
+        trwriter = csv.writer(trfile, delimiter=',')
+        trwriter.writerows(transactions.values)
 
 def sort_transaction(trs):
     return sorted(trs, key=lambda i: i[2])
@@ -38,9 +47,7 @@ def user_transactions():
     ut = []
     strbal = "This user does not exist ! <br><br>"
     user = request.form.get("uname")
-    print(user)
     for t in transactions.values:
-        print("t " + t[0] + " " + t[1])
         if t[0] == user or t[1] == user:
             ut.append(t)
 
@@ -49,7 +56,6 @@ def user_transactions():
         ');">'
 
     for u in userstab.values:
-        print(u[0], u[1])
         if user == u[0]:
             strbal = "Your current balance is " + str(u[1]) + "<br><br>"
             break
@@ -64,8 +70,6 @@ def user_transactions():
                   '</tr>'
 
     for tra in sort_transaction(ut):
-        print("tra:")
-        print(tra)
         s += '<tr>'
         for item in tra:
             s += '<td>' + str(item) + '</td>'
@@ -99,6 +103,8 @@ def home():
 
 @app.route('/confirm', methods=['POST'])
 def addtransaction():
+    global userstab
+
     newSender = True
     newRecipient = True
     sname = request.form.get("sname")
@@ -112,15 +118,13 @@ def addtransaction():
         if u[0] == rname:
             newRecipient = False
             u[1] += amount
-    print(newSender, newRecipient)
     if newSender:
-        write_user([sname, -amount])
+        userstab = pd.concat([userstab,pd.DataFrame({'name':[sname], 'balance':[-amount]})] , ignore_index=True)
     if newRecipient:
-        write_user([rname, amount])
-
+        userstab = pd.concat([userstab,pd.DataFrame({'name':[rname], 'balance':[amount]})] , ignore_index=True)
+    write_users()
     # add transaction to history
     write_tr([sname, rname, datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S"), amount])
-
     return '<body style="text-align:center; background-image: url(' + \
            "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" + \
            ');">' \
