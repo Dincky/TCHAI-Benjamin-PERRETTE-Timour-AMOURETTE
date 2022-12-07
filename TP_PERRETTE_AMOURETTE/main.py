@@ -26,6 +26,8 @@ def write_tr(tr):
         trwriter.writerow(tr)
 
 def write_users():
+        userstab.to_csv(path_or_buf="data/users.csv",index=False)
+def write_users():
         userstab.to_csv(path_or_buf="data/users.csv",index=False, mode='w')
 
 def write_user(user):
