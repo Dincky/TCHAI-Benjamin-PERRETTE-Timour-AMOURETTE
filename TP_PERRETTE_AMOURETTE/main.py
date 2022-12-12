@@ -15,7 +15,7 @@ def read_data():
     global transactions
     global userstab
     transactions = pd.read_csv("data/transactions.csv", sep=',',
-                               dtype={'sender': str, 'recipient': str, 'datetime': str, 'amount': int, 'h' : str})
+                               dtype={'sender': str, 'recipient': str, 'datetime': str, 'amount': float, 'h' : str})
     userstab = pd.read_csv("data/users.csv")
 
 
@@ -153,15 +153,14 @@ def addtransaction():
     newRecipient = True
     sname = request.form.get("sname")
     rname = request.form.get("rname")
-    amount = int(request.form.get("amnt"))
-
-    for u in userstab.values:
-        if u[0] == sname:
+    amount = float(request.form.get("amnt"))
+    for ind in userstab.index:
+        if userstab.at[ind, 'name'] == sname:
             newSender = False
-            u[1] -= amount
-        if u[0] == rname:
+            userstab.at[ind, 'balance'] = float(userstab.at[ind, 'balance']) - amount
+        if userstab.at[ind, 'name'] == rname:
             newRecipient = False
-            u[1] += amount
+            userstab.at[ind, 'balance'] = float(userstab.at[ind, 'balance'])  + amount
     if newSender:
         c = sname+str(float(-amount))
         h = XDDD(c)
