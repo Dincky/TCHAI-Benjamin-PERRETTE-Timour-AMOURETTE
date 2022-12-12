@@ -15,10 +15,8 @@ def read_data():
     global transactions
     global userstab
     transactions = pd.read_csv("data/transactions.csv", sep=',',
-                               dtype={'sender': str, 'recipient': str, 'datetime': str, 'amount': int, 'h' : str})
+                               dtype={'sender': str, 'recipient': str, 'datetime': str, 'amount': int, 'h': str})
     userstab = pd.read_csv("data/users.csv")
-
-
 
 
 def write_tr(tr):
@@ -26,18 +24,22 @@ def write_tr(tr):
         trwriter = csv.writer(trfile, delimiter=',')
         trwriter.writerow(tr)
 
+
 def write_users():
-        userstab.to_csv(path_or_buf="data/users.csv",index=False, mode='w')
+    userstab.to_csv(path_or_buf="data/users.csv", index=False, mode='w')
+
 
 def write_user(user):
     with open("data/users.csv", newline='', mode='a') as ufile:
         uwriter = csv.writer(ufile, delimiter=',')
         uwriter.writerow(user)
 
+
 def write_transactions():
     with open("data/transactions.csv", newline='', mode='w') as trfile:
         trwriter = csv.writer(trfile, delimiter=',')
         trwriter.writerows(transactions.values)
+
 
 def sort_transaction(trs):
     return sorted(trs, key=lambda i: i[2])
@@ -79,46 +81,75 @@ def user_transactions():
 
     return s + '</table>\n</body>', 201
 
-def comp(a,b):
+
+def comp(a, b):
     return a ^ b
+
 
 def XDDD(c):
     a = IV
     i = 0
     binlen = bin(len(c))
-    binlen = binlen.replace("0b","")
+    binlen = binlen.replace("0b", "")
     rest = len(c) % 4
-    padding = "\x80" + "\0"* (3 - rest) if rest else ""
+    padding = "\x80" + "\0" * (3 - rest) if rest else ""
     restbin = len(binlen) % 4
     paddingbin = "\0" * (4 - restbin) if restbin else ""
     c += padding + binlen + paddingbin
     while i < len(c):
         A = ord(c[i]) << 24
-        B = ord(c[i+1]) << 16
-        C = ord(c[i+2]) << 8
-        D = ord(c[i+3])
-        a = comp(a, A+B+C+D)
+        B = ord(c[i + 1]) << 16
+        C = ord(c[i + 2]) << 8
+        D = ord(c[i + 3])
+        a = comp(a, A + B + C + D)
         i = i + 4
     return hex(a)[2:]
+
 
 @app.route('/verif')
 def verif():
     a = ""
+    premier = True
+    u_temp = None
     for u in userstab.values:
-        c = str(u[0])+str(float(u[1]))
-        h = XDDD(c)
-        if h == u[2]:
-            a += "* " + str(u[0])+": est correcte" + "<br>"
+        if premier == True:
+            c = str(u[0]) + str(float(u[1]))
+            h = XDDD(c)
+            if h == u[2]:
+                a += "* " + str(u[0]) + ": est correcte" + "<br>"
+            else:
+                a += "* " + str(u[0]) + ": n'est pas correcte !!!!" + "<br>"
+            premier = False
+            u_temp = u
         else:
-            a += "* " + str(u[0])+": n'est pas correcte !!!!" + "<br>"
+            c = str(u[0]) + str(float(u[1])) + str(u_temp[2])
+            h = XDDD(c)
+            if h == u[2]:
+                a += "* " + str(u[0]) + ": est correcte" + "<br>"
+            else:
+                a += "* " + str(u[0]) + ": n'est pas correcte !!!!" + "<br>"
+            u_temp = u
 
+    premier = True
+    t_temp = None
     for t in transactions.values:
-        c = str(t[0])+str(t[1])+str(t[2])+str(t[3])
-        h = XDDD(c)
-        if h == t[4]:
-            a += "* La transaction " + str(t) +": est correcte" + "<br>"
+        if premier == True:
+            c = str(t[0]) + str(t[1]) + str(t[2]) + str(t[3])
+            h = XDDD(c)
+            if h == t[4]:
+                a += "* La transaction " + str(t) + ": est correcte" + "<br>"
+            else:
+                a += "* La transaction " + str(t) + ": n'est pas correcte !!!!" + "<br>"
+            premier = False
+            t_temp = t
         else:
-            a += "* La transaction " + str(t) +": n'est pas correcte !!!!" + "<br>"
+            c = str(t[0]) + str(t[1]) + str(t[2]) + str(t[3]) + str(t_temp[4])
+            h = XDDD(c)
+            if h == t[4]:
+                a += "* La transaction " + str(t) + ": est correcte" + "<br>"
+            else:
+                a += "* La transaction " + str(t) + ": n'est pas correcte !!!!" + "<br>"
+            t_temp = t
 
     return "Page de verification : <br>" + a
 
@@ -148,12 +179,15 @@ def home():
 @app.route('/confirm', methods=['POST'])
 def addtransaction():
     global userstab
+    global transactions
 
     newSender = True
     newRecipient = True
     sname = request.form.get("sname")
     rname = request.form.get("rname")
     amount = int(request.form.get("amnt"))
+    u_moins_un = None
+    t_moins_un = None
 
     for u in userstab.values:
         if u[0] == sname:
@@ -163,19 +197,44 @@ def addtransaction():
             newRecipient = False
             u[1] += amount
     if newSender:
-        c = sname+str(float(-amount))
-        h = XDDD(c)
-        userstab = pd.concat([userstab,pd.DataFrame({'name':[sname], 'balance':[-amount], 'h':[h]})] , ignore_index=True)
+        if len(userstab) != 0:
+            u_moins_un = userstab.values[len(userstab)-1]
+
+        if u_moins_un is None:
+            c = sname + str(float(-amount))
+            h = XDDD(c)
+        else:
+            c = sname + str(float(-amount)) + str(u_moins_un[2])
+            h = XDDD(c)
+        userstab = pd.concat([userstab, pd.DataFrame({'name': [sname], 'balance': [-amount], 'h': [h]})],
+                             ignore_index=True)
+
     if newRecipient:
-        c = rname+str(float(amount))
-        h = XDDD(c)
-        userstab = pd.concat([userstab,pd.DataFrame({'name':[rname], 'balance':[amount], 'h':[h]})] , ignore_index=True)
+        if len(userstab) != 0:
+            u_moins_un = userstab.values[len(userstab)-1]
+
+        if u_moins_un is None:
+            c = rname + str(float(amount)) + str(h)
+            h = XDDD(c)
+        else:
+            c = rname + str(float(amount)) + str(u_moins_un[2])
+            h = XDDD(c)
+        userstab = pd.concat([userstab, pd.DataFrame({'name': [rname], 'balance': [amount], 'h': [h]})],
+                             ignore_index=True)
     write_users()
     # add transaction to history
     date = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    c = sname+rname+str(date)+str(amount)
-    h = XDDD(c)
+    if len(transactions) != 0:
+        t_moins_un = transactions.values[len(transactions)-1]
+
+    if t_moins_un is None:
+        c = sname + rname + str(date) + str(amount)
+        h = XDDD(c)
+    else:
+        c = sname + rname + str(date) + str(amount) + str(t_moins_un[4])
+        h = XDDD(c)
     write_tr([sname, rname, date, amount, h])
+    read_data()
     return '<body style="text-align:center; background-image: url(' + \
            "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" + \
            ');">' \
