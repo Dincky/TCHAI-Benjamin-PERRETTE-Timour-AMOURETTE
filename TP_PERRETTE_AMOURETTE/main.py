@@ -15,7 +15,7 @@ def read_data():
     global transactions
     global userstab
     transactions = pd.read_csv("data/transactions.csv", sep=',',
-                               dtype={'sender': str, 'recipient': str, 'datetime': str, 'amount': int, 'h': str})
+                               dtype={'sender': str, 'recipient': str, 'datetime': str, 'amount': float, 'h': str})
     userstab = pd.read_csv("data/users.csv")
 
 
@@ -63,13 +63,14 @@ def user_transactions():
             strbal = "Your current balance is " + str(u[1]) + "<br><br>"
             break
     s += strbal + '<table border="1" bgcolor="#FFFFFF">' \
-                  '<thead><tr><th colspan="4" bgcolor="A0A8A6">Transactions</th>' \
+                  '<thead><tr><th colspan="5" bgcolor="A0A8A6">Transactions</th>' \
                   '</tr></thead>' \
                   '<tbody><tr>' \
                   '<td>Sender</td>' \
                   '<td>Recipient</td>' \
                   '<td>Date</td>' \
                   '<td>Amount</td>' \
+                  '<td>Hash</td>' \
                   '</tr>'
 
     for tra in sort_transaction(ut):
@@ -81,54 +82,38 @@ def user_transactions():
 
     return s + '</table>\n</body>', 201
 
-
-def comp(a, b):
+def comp(a,b):
     return a ^ b
-
 
 def XDDD(c):
     a = IV
     i = 0
     binlen = bin(len(c))
-    binlen = binlen.replace("0b", "")
+    binlen = binlen.replace("0b","")
     rest = len(c) % 4
-    padding = "\x80" + "\0" * (3 - rest) if rest else ""
+    padding = "\x80" + "\0"* (3 - rest) if rest else ""
     restbin = len(binlen) % 4
     paddingbin = "\0" * (4 - restbin) if restbin else ""
     c += padding + binlen + paddingbin
     while i < len(c):
         A = ord(c[i]) << 24
-        B = ord(c[i + 1]) << 16
-        C = ord(c[i + 2]) << 8
-        D = ord(c[i + 3])
-        a = comp(a, A + B + C + D)
+        B = ord(c[i+1]) << 16
+        C = ord(c[i+2]) << 8
+        D = ord(c[i+3])
+        a = comp(a, A+B+C+D)
         i = i + 4
     return hex(a)[2:]
 
-
-@app.route('/verif')
+@app.route('/verif', methods=["POST"])
 def verif():
     a = ""
-    premier = True
-    u_temp = None
     for u in userstab.values:
-        if premier == True:
-            c = str(u[0]) + str(float(u[1]))
-            h = XDDD(c)
-            if h == u[2]:
-                a += "* " + str(u[0]) + ": est correcte" + "<br>"
-            else:
-                a += "* " + str(u[0]) + ": n'est pas correcte !!!!" + "<br>"
-            premier = False
-            u_temp = u
+        c = str(u[0])+str(float(u[1]))
+        h = XDDD(c)
+        if h == u[2]:
+            a += "* " + str(u[0]) + ": est correct" + "<br>"
         else:
-            c = str(u[0]) + str(float(u[1])) + str(u_temp[2])
-            h = XDDD(c)
-            if h == u[2]:
-                a += "* " + str(u[0]) + ": est correcte" + "<br>"
-            else:
-                a += "* " + str(u[0]) + ": n'est pas correcte !!!!" + "<br>"
-            u_temp = u
+            a += "* " + str(u[0]) + ": n'est pas correct !!!!" + "<br>"
 
     premier = True
     t_temp = None
@@ -151,7 +136,10 @@ def verif():
                 a += "* La transaction " + str(t) + ": n'est pas correcte !!!!" + "<br>"
             t_temp = t
 
-    return "Page de verification : <br>" + a
+    return '<body style = "background-image: url(' \
+           + "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" \
+           + ');">' \
+           "Page de verification : <br>" + a
 
 
 @app.route('/')
@@ -159,21 +147,28 @@ def home():
     read_data()
     form = '' \
            '<body style = "background-image: url(' \
-           + "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" \
-           + ');">' \
-             '<form action="/confirm" method="POST"> ' \
-             '<label for="sname">Sender:</label><br>  <input type="text" id="sname" name="sname"><br>  ' \
-             '<label for="rname">Recipient:</label><br>  <input type="text" id="rname" name="rname"><br>' \
-             '<label for="amnt">Amount:</label><br>  <input type="number" id="amnt" name="amnt">' \
-             '<br><br><input type="submit" id "submit name="submit" value="Add Transaction">' \
-             '</form>' \
-             '<form action="/user" method="POST">' \
-             '<label for="uname">Select user</label><input type="text" id="uname" name ="uname"> ' \
-             '<input type="submit" value="Transaction history">' \
-             ' <div bgcolor="FFFFFF">\n' \
-             'test'
+           "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" \
+           ');"' \
+           'min-height: 100%' \
+           '>' \
+           '<form action="/confirm" method="POST"> ' \
+           '<label for="sname">Sender:</label><br>  <input type="text" id="sname" name="sname"><br>  ' \
+           '<label for="rname">Recipient:</label><br>  <input type="text" id="rname" name="rname"><br>' \
+           '<label for="amnt">Amount:</label><br>  <input type="number" id="amnt" name="amnt">' \
+           '<br><br><input type="submit" id "submit name="submit" value="Add Transaction">' \
+           '</form>' \
+           '<form action="/user" method="POST">' \
+           '<label for="uname">Select user</label><input type="text" id="uname" name ="uname"> ' \
+           '<input type="submit" value="Transaction history">' \
+           '</form>'
+
     s = transactions.to_html()
-    return form + s + '</div>\n</table>\n</body>', 200
+    return form + s + '</div>\n</table>\n</body>' \
+                      '<footer>' \
+                      '<br>' \
+                      '<form action="/verif" method="POST">' \
+                      '<input type = "submit" value="Verification des donnees">' \
+                      '</form></footer>', 200
 
 
 @app.route('/confirm', methods=['POST'])
@@ -185,47 +180,34 @@ def addtransaction():
     newRecipient = True
     sname = request.form.get("sname")
     rname = request.form.get("rname")
-    amount = int(request.form.get("amnt"))
-    u_moins_un = None
+    amount = float(request.form.get("amnt"))
     t_moins_un = None
 
-    for u in userstab.values:
-        if u[0] == sname:
+    for ind in userstab.index:
+        if userstab.at[ind, 'name'] == sname:
             newSender = False
-            u[1] -= amount
-        if u[0] == rname:
+            userstab.at[ind, 'balance'] = float(userstab.at[ind, 'balance']) - amount
+            userstab.at[ind,'h'] = XDDD(sname+str(float(userstab.at[ind, 'balance'])))
+        if userstab.at[ind, 'name'] == rname:
             newRecipient = False
-            u[1] += amount
+            userstab.at[ind, 'balance'] = float(userstab.at[ind, 'balance']) + amount
+            userstab.at[ind, 'h'] = XDDD(rname + str(float(userstab.at[ind, 'balance'])))
     if newSender:
-        if len(userstab) != 0:
-            u_moins_un = userstab.values[len(userstab)-1]
-
-        if u_moins_un is None:
-            c = sname + str(float(-amount))
-            h = XDDD(c)
-        else:
-            c = sname + str(float(-amount)) + str(u_moins_un[2])
-            h = XDDD(c)
+        c = sname + str(float(-amount))
+        h = XDDD(c)
         userstab = pd.concat([userstab, pd.DataFrame({'name': [sname], 'balance': [-amount], 'h': [h]})],
                              ignore_index=True)
 
     if newRecipient:
-        if len(userstab) != 0:
-            u_moins_un = userstab.values[len(userstab)-1]
-
-        if u_moins_un is None:
-            c = rname + str(float(amount)) + str(h)
-            h = XDDD(c)
-        else:
-            c = rname + str(float(amount)) + str(u_moins_un[2])
-            h = XDDD(c)
+        c = rname + str(float(amount))
+        h = XDDD(c)
         userstab = pd.concat([userstab, pd.DataFrame({'name': [rname], 'balance': [amount], 'h': [h]})],
                              ignore_index=True)
     write_users()
     # add transaction to history
     date = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
     if len(transactions) != 0:
-        t_moins_un = transactions.values[len(transactions)-1]
+        t_moins_un = transactions.values[len(transactions) - 1]
 
     if t_moins_un is None:
         c = sname + rname + str(date) + str(amount)
@@ -234,7 +216,7 @@ def addtransaction():
         c = sname + rname + str(date) + str(amount) + str(t_moins_un[4])
         h = XDDD(c)
     write_tr([sname, rname, date, amount, h])
-    read_data()
+
     return '<body style="text-align:center; background-image: url(' + \
            "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" + \
            ');">' \
