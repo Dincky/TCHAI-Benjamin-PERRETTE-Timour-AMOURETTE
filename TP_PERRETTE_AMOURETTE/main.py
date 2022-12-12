@@ -61,13 +61,14 @@ def user_transactions():
             strbal = "Your current balance is " + str(u[1]) + "<br><br>"
             break
     s += strbal + '<table border="1" bgcolor="#FFFFFF">' \
-                  '<thead><tr><th colspan="4" bgcolor="A0A8A6">Transactions</th>' \
+                  '<thead><tr><th colspan="5" bgcolor="A0A8A6">Transactions</th>' \
                   '</tr></thead>' \
                   '<tbody><tr>' \
                   '<td>Sender</td>' \
                   '<td>Recipient</td>' \
                   '<td>Date</td>' \
                   '<td>Amount</td>' \
+                  '<td>Hash</td>' \
                   '</tr>'
 
     for tra in sort_transaction(ut):
@@ -101,16 +102,16 @@ def XDDD(c):
         i = i + 4
     return hex(a)[2:]
 
-@app.route('/verif')
+@app.route('/verif', methods=["POST"])
 def verif():
     a = ""
     for u in userstab.values:
         c = str(u[0])+str(float(u[1]))
         h = XDDD(c)
         if h == u[2]:
-            a += "* " + str(u[0])+": est correcte" + "<br>"
+            a += "* " + str(u[0])+": est correct" + "<br>"
         else:
-            a += "* " + str(u[0])+": n'est pas correcte !!!!" + "<br>"
+            a += "* " + str(u[0])+": n'est pas correct !!!!" + "<br>"
 
     for t in transactions.values:
         c = str(t[0])+str(t[1])+str(t[2])+str(t[3])
@@ -120,29 +121,38 @@ def verif():
         else:
             a += "* La transaction " + str(t) +": n'est pas correcte !!!!" + "<br>"
 
-    return "Page de verification : <br>" + a
+    return '<body style = "background-image: url(' \
+           + "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" \
+           + ');">' \
+           "Page de verification : <br>" + a
 
 
 @app.route('/')
 def home():
     read_data()
     form = '' \
-           '<body style = "background-image: url(' \
-           + "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" \
-           + ');">' \
-             '<form action="/confirm" method="POST"> ' \
-             '<label for="sname">Sender:</label><br>  <input type="text" id="sname" name="sname"><br>  ' \
-             '<label for="rname">Recipient:</label><br>  <input type="text" id="rname" name="rname"><br>' \
-             '<label for="amnt">Amount:</label><br>  <input type="number" id="amnt" name="amnt">' \
-             '<br><br><input type="submit" id "submit name="submit" value="Add Transaction">' \
-             '</form>' \
-             '<form action="/user" method="POST">' \
-             '<label for="uname">Select user</label><input type="text" id="uname" name ="uname"> ' \
-             '<input type="submit" value="Transaction history">' \
-             ' <div bgcolor="FFFFFF">\n' \
-             'test'
+            '<body style = "background-image: url(' \
+            "'https://images.pexels.com/photos/1103970/pexels-photo-1103970.jpeg'" \
+            ');"' \
+           'min-height: 100%' \
+           '>' \
+            '<form action="/confirm" method="POST"> ' \
+            '<label for="sname">Sender:</label><br>  <input type="text" id="sname" name="sname"><br>  ' \
+            '<label for="rname">Recipient:</label><br>  <input type="text" id="rname" name="rname"><br>' \
+            '<label for="amnt">Amount:</label><br>  <input type="number" id="amnt" name="amnt">' \
+            '<br><br><input type="submit" id "submit name="submit" value="Add Transaction">' \
+            '</form>' \
+            '<form action="/user" method="POST">' \
+            '<label for="uname">Select user</label><input type="text" id="uname" name ="uname"> ' \
+            '<input type="submit" value="Transaction history">' \
+            '</form>'
+
     s = transactions.to_html()
-    return form + s + '</div>\n</table>\n</body>', 200
+    return form + s + '</div>\n</table>\n</body>' \
+                      '<footer>' \
+                      '<form action="/verif" method="POST">' \
+                      '<input type = "submit" value="Verification des donnees">' \
+                      '</form></footer>', 200
 
 
 @app.route('/confirm', methods=['POST'])
@@ -158,9 +168,11 @@ def addtransaction():
         if userstab.at[ind, 'name'] == sname:
             newSender = False
             userstab.at[ind, 'balance'] = float(userstab.at[ind, 'balance']) - amount
+            userstab.at[ind,'h'] = XDDD(sname+str(float(userstab.at[ind, 'balance'])))
         if userstab.at[ind, 'name'] == rname:
             newRecipient = False
             userstab.at[ind, 'balance'] = float(userstab.at[ind, 'balance'])  + amount
+            userstab.at[ind,'h'] = XDDD(rname+str(float(userstab.at[ind, 'balance'])))
     if newSender:
         c = sname+str(float(-amount))
         h = XDDD(c)
